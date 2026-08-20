@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aegis League | Torneo Oficial de Dota 2</title>
+<meta name="description" content="Aegis League - Torneo competitivo de Dota 2. Equipos, brackets, reglas y resultados en vivo.">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Iconos -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js" crossorigin="anonymous"></script>
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          carbon: '#0F1215',
+          panel: '#181D24',
+          fire: '#D32F2F',
+          firelight: '#FF5548',
+          radiant: '#FFD700',
+          spectral: '#4FC3F7',
+          dire: '#8B1E1E',
+        },
+        fontFamily: {
+          display: ['Orbitron', 'sans-serif'],
+          body: ['Inter', 'sans-serif'],
+        },
+        boxShadow: {
+          'glow-gold': '0 0 25px rgba(255, 215, 0, 0.35)',
+          'glow-red': '0 0 25px rgba(211, 47, 47, 0.45)',
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  :root { color-scheme: dark; }
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: #0F1215;
+    background-image:
+      radial-gradient(ellipse at top, rgba(20, 90, 68, 0.28), transparent 60%),
+      linear-gradient(180deg, rgba(15,18,21,0.92) 0%, rgba(11,22,18,0.86) 45%, rgba(15,18,21,0.94) 100%),
+      url('assets/images/page-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+  /* ---- Matiz de marca: viñeta dorado/esmeralda sobre las imágenes (en vez de negro plano) ---- */
+  .tint-overlay {
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(255, 215, 0, 0.07), transparent 60%),
+      linear-gradient(180deg, rgba(11, 22, 18, 0.72) 0%, rgba(15, 18, 21, 0.55) 45%, rgba(11, 22, 18, 0.82) 100%);
+  }
+  .font-display { font-family: 'Orbitron', sans-serif; }
+  .font-body { font-family: 'Inter', sans-serif; }
+
+  /* ---- Glassmorphism ---- */
+  .glass {
+    background: rgba(24, 29, 36, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* ---- Scrollbar ---- */
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #0F1215; }
+  ::-webkit-scrollbar-thumb { background: #2A313B; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #D32F2F; }
+
+  /* ---- Match Found: Glow / Pulse ---- */
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.55), 0 0 25px 5px rgba(255, 215, 0, 0.25); transform: scale(1); }
+    50% { box-shadow: 0 0 0 18px rgba(211, 47, 47, 0), 0 0 40px 12px rgba(255, 215, 0, 0.4); transform: scale(1.035); }
+  }
+  .btn-accept-pulse { animation: pulseGlow 1.8s ease-in-out infinite; }
+
+  /* ---- WhatsApp flotante ---- */
+  @keyframes whatsappPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); }
+    50% { box-shadow: 0 0 0 12px rgba(37, 211, 102, 0); }
+  }
+  .whatsapp-float { animation: whatsappPulse 2.4s ease-in-out infinite; }
+
+  @keyframes matchTitleIn {
+    0% { opacity: 0; letter-spacing: 0.4em; }
+    100% { opacity: 1; letter-spacing: 0.12em; }
+  }
+  .match-title-anim { animation: matchTitleIn 1s ease-out forwards; }
+
+  .fade-out {
+    animation: fadeOutOverlay 500ms ease forwards;
+  }
+  @keyframes fadeOutOverlay {
+    to { opacity: 0; visibility: hidden; }
+  }
+
+  /* ---- Section reveal ---- */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.in-view { opacity: 1; transform: translateY(0); }
+
+  /* ---- Team status badges ---- */
+  .badge-active { background: rgba(34, 197, 94, 0.14); color: #4ADE80; border: 1px solid rgba(74, 222, 128, 0.4); }
+  .badge-clasificado { background: rgba(255, 215, 0, 0.14); color: #FFD700; border: 1px solid rgba(255, 215, 0, 0.45); }
+  .badge-eliminado { background: rgba(211, 47, 47, 0.14); color: #FF6B6B; border: 1px solid rgba(211, 47, 47, 0.45); }
+  .badge-campeon { background: linear-gradient(90deg, rgba(255,215,0,0.22), rgba(255,140,0,0.18)); color: #FFD700; border: 1px solid rgba(255, 215, 0, 0.6); }
+
+  /* ---- Bracket connectors ---- */
+  .bracket-col { position: relative; }
+  .bracket-match { position: relative; }
+  .bracket-match::after {
+    content: '';
+    position: absolute;
+    right: -1.25rem;
+    top: 50%;
+    width: 1.25rem;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.15);
+  }
+  .bracket-col:last-child .bracket-match::after { display: none; }
+
+  /* ---- Accordion ---- */
+  .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+  .accordion-item.open .accordion-content { max-height: 400px; }
+  .accordion-item.open .accordion-chevron { transform: rotate(180deg); }
+  .accordion-chevron { transition: transform 0.3s ease; }
+
+  /* ---- Hero background ---- */
+  .hero-bg {
+    background-image: url('assets/images/page-bg.jpg'), radial-gradient(ellipse at center, #241417 0%, #0F1215 70%);
+    background-size: cover;
+    background-position: center;
+  }
+  .section-bg {
+    background-image: url('assets/images/page-bg.jpg'), linear-gradient(180deg, #0F1215 0%, #14181D 100%);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  .nosotros-bg {
+    background-image: url('assets/images/nosotros-bg.jpg'), linear-gradient(180deg, #0F1215 0%, #14181D 100%);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+  /* ---- Paneles sólidos con el mismo matiz de marca (dorado/esmeralda) ---- */
+  .brand-panel {
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(255, 215, 0, 0.04), transparent 55%),
+      linear-gradient(180deg, rgba(11, 22, 18, 0.97) 0%, rgba(15, 18, 21, 0.97) 100%);
+  }
+
+  input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+
+  .nav-link { position: relative; }
+  .nav-link::after {
+    content: ''; position: absolute; left: 0; bottom: -4px; width: 0; height: 2px;
+    background: #D32F2F; transition: width 0.25s ease;
+  }
+  .nav-link:hover::after { width: 100%; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+
+  *:focus-visible {
+    outline: 2px solid #FFD700;
+    outline-offset: 2px;
+  }
+</style>
+</head>
+
+<body class="font-body bg-carbon text-gray-200 antialiased">
+
+<!-- ================= MATCH FOUND OVERLAY ================= -->
+<div id="match-found-overlay" class="fixed inset-0 z-50 flex items-center justify-center hero-bg">
+  <div class="absolute inset-0 tint-overlay"></div>
+  <div class="relative z-10 text-center px-6 max-w-2xl mx-auto">
+    <div class="flex items-center justify-center gap-3 mb-6">
+      <img src="assets/images/logo-aegis.png" alt="Aegis League" class="h-12 w-12 object-contain">
+      <span class="font-display tracking-[0.3em] text-sm text-spectral uppercase">Aegis League</span>
+      <img src="assets/images/logo-aegis.png" alt="Aegis League" class="h-12 w-12 object-contain">
+    </div>
+    <h1 class="match-title-anim font-display text-4xl sm:text-6xl font-900 text-white uppercase tracking-widest mb-3" style="font-weight:900;">
+      ¡Partida <span class="text-fire">Encontrada</span>!
+    </h1>
+    <p class="text-gray-400 text-lg mb-12 font-medium">Aegis League &mdash; Torneo Oficial de Dota 2</p>
+
+    <button id="btn-accept-match"
+      class="btn-accept-pulse relative font-display uppercase tracking-widest text-white text-lg sm:text-xl font-bold
+             px-12 py-5 rounded-xl bg-gradient-to-r from-fire to-dire border border-red-400/40
+             hover:brightness-110 active:scale-95 transition">
+      <i class="fa-solid fa-check mr-2"></i> Aceptar Partida
+    </button>
+
+    <p class="text-xs text-gray-500 mt-8 tracking-wide">Haz clic para ingresar a la plataforma del torneo</p>
+  </div>
+</div>
+
+<!-- ================= HEADER ================= -->
+<header id="site-header" class="fixed top-0 inset-x-0 z-40 glass transition-shadow">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+    <a href="#inicio" class="flex items-center gap-2">
+      <img id="logo-header" src="assets/images/logo-aegis.png" alt="Logo Aegis League" class="h-9 w-9 object-contain hidden">
+      <div id="logo-header-fallback" class="h-9 w-9 rounded-md bg-gradient-to-br from-fire to-radiant flex items-center justify-center">
+        <i class="fa-solid fa-shield-halved text-carbon text-sm"></i>
+      </div>
+      <span class="font-display font-bold tracking-widest text-white text-sm sm:text-base">AEGIS<span class="text-fire">LEAGUE</span></span>
+    </a>
+
+    <nav class="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-300">
+      <a href="#inicio" class="nav-link hover:text-white transition">Inicio</a>
+      <a href="#equipos" class="nav-link hover:text-white transition">Equipos</a>
+      <a href="#brackets" class="nav-link hover:text-white transition">Brackets</a>
+      <a href="#reglas" class="nav-link hover:text-white transition">Reglas</a>
+      <a href="#nosotros" class="nav-link hover:text-white transition">Nosotros</a>
+    </nav>
+
+    <div class="flex items-center gap-3">
+      <a href="#admin" class="hidden sm:inline-flex items-center gap-2 text-xs font-display uppercase tracking-wider px-4 py-2 rounded-lg border border-fire/50 text-fire hover:bg-fire hover:text-white transition">
+        <i class="fa-solid fa-user-shield"></i> Panel Admin
+      </a>
+      <button id="btn-mobile-menu" class="lg:hidden text-gray-300 hover:text-white text-xl px-2" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile nav -->
+  <div id="mobile-menu" class="lg:hidden hidden glass border-t border-white/5">
+    <nav class="flex flex-col px-6 py-4 gap-4 text-sm text-gray-300">
+      <a href="#inicio" class="mobile-nav-link">Inicio</a>
+      <a href="#equipos" class="mobile-nav-link">Equipos</a>
+      <a href="#brackets" class="mobile-nav-link">Brackets</a>
+      <a href="#reglas" class="mobile-nav-link">Reglas</a>
+      <a href="#nosotros" class="mobile-nav-link">Nosotros</a>
+      <a href="#admin" class="mobile-nav-link text-fire">Panel Admin</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section id="inicio" class="relative hero-bg min-h-screen flex items-center pt-24">
+  <div class="absolute inset-0 tint-overlay"></div>
+  <div class="relative z-10 max-w-7xl mx-auto px-6 py-20 w-full">
+    <div class="max-w-3xl reveal">
+      <span class="inline-flex items-center gap-2 text-xs font-display tracking-[0.25em] uppercase text-spectral border border-spectral/30 rounded-full px-4 py-1.5 mb-6">
+        <i class="fa-solid fa-bolt"></i> Temporada 2026 &middot; 20 Equipos
+      </span>
+      <h1 class="font-display font-black text-5xl sm:text-7xl text-white leading-[1.05] mb-6">
+        BIENVENIDOS A <span class="text-transparent bg-clip-text bg-gradient-to-r from-fire via-radiant to-spectral">AEGIS LEAGUE</span>
+      </h1>
+      <p class="text-gray-300 text-lg sm:text-xl max-w-2xl mb-10 leading-relaxed">
+        El torneo competitivo de Dota 2 donde 20 equipos luchan por el Aegis. Fase de grupos, cuartos, semifinales y una Gran Final Bo3 que lo decide todo.
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href="#brackets" class="inline-flex items-center gap-2 font-display uppercase tracking-wider text-sm font-bold px-7 py-4 rounded-xl bg-fire hover:bg-firelight shadow-glow-red transition">
+          <i class="fa-solid fa-sitemap"></i> Ver Brackets
+        </a>
+        <a href="#equipos" class="inline-flex items-center gap-2 font-display uppercase tracking-wider text-sm font-bold px-7 py-4 rounded-xl border border-radiant/50 text-radiant hover:bg-radiant hover:text-carbon transition">
+          <i class="fa-solid fa-users"></i> Ver Equipos
+        </a>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 sm:grid-cols-3 gap-4 max-w-xl mt-16 reveal">
+      <div class="glass rounded-xl px-4 py-5 text-center">
+        <p class="font-display text-3xl font-bold text-radiant" id="stat-teams">20</p>
+        <p class="text-xs text-gray-400 uppercase tracking-wide mt-1">Equipos</p>
+      </div>
+      <div class="glass rounded-xl px-4 py-5 text-center">
+        <p class="font-display text-3xl font-bold text-fire" id="stat-matches">--</p>
+        <p class="text-xs text-gray-400 uppercase tracking-wide mt-1">Partidas</p>
+      </div>
+      <div class="glass rounded-xl px-4 py-5 text-center">
+        <p class="font-display text-3xl font-bold text-spectral">1</p>
+        <p class="text-xs text-gray-400 uppercase tracking-wide mt-1">Aegis en juego</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SOBRE NOSOTROS ================= -->
+<section id="nosotros" class="relative py-24 nosotros-bg">
+  <div class="absolute inset-0 tint-overlay"></div>
+  <div class="relative z-10 max-w-5xl mx-auto px-6 text-center reveal">
+    <span class="text-xs font-display tracking-[0.25em] uppercase text-spectral">Quiénes Somos</span>
+    <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mt-3 mb-6">Sobre Aegis League</h2>
+    <p class="text-gray-300 text-lg leading-relaxed">
+      Somos un equipo de estudiantes de Ingeniería de Sistemas aplicando nuestros conocimientos en desarrollo web, arquitectura de software y gestión tecnológica para profesionalizar la organización de torneos gamer.
+    </p>
+  </div>
+</section>
+
+<!-- ================= EQUIPOS ================= -->
+<section id="equipos" class="py-24 brand-panel">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center mb-14 reveal">
+      <span class="text-xs font-display tracking-[0.25em] uppercase text-fire">Competidores</span>
+      <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mt-3">Equipos Participantes</h2>
+      <p class="text-gray-400 mt-3 max-w-xl mx-auto">20 escuadras compitiendo por la gloria y el Aegis de la temporada.</p>
+    </div>
+    <div id="teams-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <!-- Renderizado por JS -->
+    </div>
+  </div>
+</section>
+
+<!-- ================= BRACKETS ================= -->
+<section id="brackets" class="py-24 relative assets/nosotros-bg.jpg">
+  <div class="absolute inset-0 tint-overlay"></div>
+  <div class="relative z-10 max-w-7xl mx-auto px-6">
+    <div class="text-center mb-14 reveal">
+      <span class="text-xs font-display tracking-[0.25em] uppercase text-spectral">Llave del Torneo</span>
+      <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mt-3">Árbol de Competencia</h2>
+      <p class="text-gray-400 mt-3 max-w-xl mx-auto">Fase de Grupos (Bo1) &rarr; Cuartos (Bo1) &rarr; Semifinales (Bo3) &rarr; Gran Final (Bo3)</p>
+    </div>
+    <div id="brackets-container" class="overflow-x-auto pb-6">
+      <div id="brackets-flex" class="flex gap-10 min-w-max px-2">
+        <!-- Renderizado por JS: 4 columnas de ronda -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= REGLAS ================= -->
+<section id="reglas" class="py-24 brand-panel">
+  <div class="max-w-4xl mx-auto px-6">
+    <div class="text-center mb-14 reveal">
+      <span class="text-xs font-display tracking-[0.25em] uppercase text-radiant">Fair Play</span>
+      <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mt-3">Reglas Oficiales</h2>
+    </div>
+    <div id="accordion-rules" class="space-y-3">
+      <div class="accordion-item glass rounded-xl overflow-hidden">
+        <button class="accordion-toggle w-full flex items-center justify-between px-6 py-5 text-left">
+          <span class="font-display font-semibold text-white flex items-center gap-3"><i class="fa-solid fa-clock text-fire"></i> Puntualidad</span>
+          <i class="fa-solid fa-chevron-down accordion-chevron text-gray-400"></i>
+        </button>
+        <div class="accordion-content px-6">
+          <p class="text-gray-400 pb-5 leading-relaxed">Los equipos cuentan con <strong class="text-white">10 minutos de tolerancia</strong> desde la hora programada del enfrentamiento. Superado ese tiempo sin conexión de todos los jugadores, el equipo ausente perderá la partida por W.O.</p>
+        </div>
+      </div>
+      <div class="accordion-item glass rounded-xl overflow-hidden">
+        <button class="accordion-toggle w-full flex items-center justify-between px-6 py-5 text-left">
+          <span class="font-display font-semibold text-white flex items-center gap-3"><i class="fa-solid fa-pause text-spectral"></i> Pausas Técnicas</span>
+          <i class="fa-solid fa-chevron-down accordion-chevron text-gray-400"></i>
+        </button>
+        <div class="accordion-content px-6">
+          <p class="text-gray-400 pb-5 leading-relaxed">Cada equipo dispone de un máximo de <strong class="text-white">5 minutos</strong> de pausa técnica por partida para resolver problemas de conexión o hardware. Pausas adicionales quedan a criterio del staff arbitral.</p>
+        </div>
+      </div>
+      <div class="accordion-item glass rounded-xl overflow-hidden">
+        <button class="accordion-toggle w-full flex items-center justify-between px-6 py-5 text-left">
+          <span class="font-display font-semibold text-white flex items-center gap-3"><i class="fa-solid fa-dice text-radiant"></i> Elección de Lado / Picks</span>
+          <i class="fa-solid fa-chevron-down accordion-chevron text-gray-400"></i>
+        </button>
+        <div class="accordion-content px-6">
+          <p class="text-gray-400 pb-5 leading-relaxed">La elección de lado (Radiant/Dire) y el orden de picks/bans se define mediante coin-flip en el lobby oficial antes de cada partida, coordinado por el árbitro asignado.</p>
+        </div>
+      </div>
+      <div class="accordion-item glass rounded-xl overflow-hidden">
+        <button class="accordion-toggle w-full flex items-center justify-between px-6 py-5 text-left">
+          <span class="font-display font-semibold text-white flex items-center gap-3"><i class="fa-solid fa-triangle-exclamation text-fire"></i> Penalizaciones</span>
+          <i class="fa-solid fa-chevron-down accordion-chevron text-gray-400"></i>
+        </button>
+        <div class="accordion-content px-6">
+          <p class="text-gray-400 pb-5 leading-relaxed">Toda conducta antideportiva (insultos, flaming, scripts o colusión) será sancionada con amonestación, pérdida de partida o descalificación del torneo, según la gravedad, a criterio del comité organizador.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ADMIN PANEL ================= -->
+<section id="admin" class="py-24 brand-panel border-t border-white/5">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center mb-10">
+      <span class="text-xs font-display tracking-[0.25em] uppercase text-fire">Zona Restringida</span>
+      <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mt-3">Panel de Administración</h2>
+      <p class="text-gray-400 mt-3">Gestiona equipos, enfrentamientos y copias de seguridad del torneo.</p>
+    </div>
+
+    <!-- Login Gate -->
+    <div id="admin-login-gate" class="max-w-sm mx-auto glass rounded-2xl p-8">
+      <div class="text-center mb-6">
+        <i class="fa-solid fa-lock text-radiant text-3xl mb-3"></i>
+        <p class="text-sm text-gray-400">Ingresa la clave de administrador para continuar.</p>
+      </div>
+      <form id="admin-login-form" class="space-y-4">
+        <input id="admin-password" type="password" placeholder="Clave de acceso" autocomplete="off"
+          class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-fire outline-none">
+        <button type="submit" class="w-full font-display uppercase tracking-wider text-sm font-bold py-3 rounded-lg bg-fire hover:bg-firelight transition">
+          Ingresar
+        </button>
+        <p id="admin-login-error" class="text-xs text-fire text-center hidden">Clave incorrecta. Intenta nuevamente.</p>
+        <p class="text-xs text-gray-500 text-center pt-2">acceso solo para administradores: <span class="text-gray-300"></span></p>
+      </form>
+    </div>
+
+    <!-- Panel (oculto hasta autenticar) -->
+    <div id="admin-panel" class="hidden space-y-10">
+
+      <div class="flex flex-wrap items-center justify-between gap-4 glass rounded-xl px-6 py-4">
+        <p class="text-sm text-gray-300"><i class="fa-solid fa-circle-check text-green-400 mr-2"></i>Sesión de administrador activa</p>
+        <button id="btn-admin-logout" class="text-xs font-display uppercase tracking-wider text-gray-400 hover:text-fire transition">
+          <i class="fa-solid fa-right-from-bracket mr-1"></i> Cerrar sesión
+        </button>
+      </div>
+
+      <!-- A) Gestión de Equipos -->
+      <div class="glass rounded-2xl p-6 sm:p-8">
+        <h3 class="font-display font-bold text-xl text-white mb-6 flex items-center gap-3">
+          <i class="fa-solid fa-users-gear text-radiant"></i> Gestión de Equipos
+        </h3>
+        <form id="team-form" class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6 items-start">
+          <input type="hidden" id="team-editing-id" value="">
+          <input type="hidden" id="team-logo-data" value="">
+          <input id="team-name-input" type="text" placeholder="Nombre del equipo" required
+            class="sm:col-span-2 bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-radiant outline-none">
+
+          <div class="flex items-center gap-3">
+            <label for="team-logo-file" class="flex-1 cursor-pointer bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-gray-400 hover:border-radiant transition flex items-center gap-2 truncate">
+              <i class="fa-solid fa-upload text-radiant shrink-0"></i>
+              <span id="team-logo-file-label" class="truncate">Subir logo del equipo</span>
+            </label>
+            <input type="file" id="team-logo-file" accept="image/*" class="hidden">
+            <img id="team-logo-preview" src="" alt="Vista previa" class="hidden h-11 w-11 rounded-md object-cover border border-white/10 shrink-0">
+          </div>
+
+          <select id="team-group-input" class="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-radiant outline-none">
+            <option value="A">Grupo A</option>
+            <option value="B">Grupo B</option>
+            <option value="C">Grupo C</option>
+            <option value="D">Grupo D</option>
+          </select>
+          <button type="submit" id="team-submit-btn" class="sm:col-span-4 font-display uppercase tracking-wider text-sm font-bold py-3 rounded-lg bg-radiant text-carbon hover:brightness-110 transition">
+            <i class="fa-solid fa-plus mr-1"></i> Agregar Equipo
+          </button>
+          <p id="team-form-error" class="sm:col-span-4 text-xs text-fire hidden"></p>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-400 uppercase text-xs tracking-wide border-b border-white/10">
+                <th class="py-3 pr-4">Equipo</th>
+                <th class="py-3 pr-4">Grupo</th>
+                <th class="py-3 pr-4">Estado</th>
+                <th class="py-3 pr-4 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="admin-teams-table">
+              <!-- Renderizado por JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- B) Creador de Enfrentamientos -->
+      <div class="glass rounded-2xl p-6 sm:p-8">
+        <h3 class="font-display font-bold text-xl text-white mb-6 flex items-center gap-3">
+          <i class="fa-solid fa-swords text-fire"></i> Creador de Enfrentamientos
+        </h3>
+        <form id="match-form" class="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-8">
+          <select id="match-teamA-input" required class="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-fire outline-none">
+            <option value="">Equipo A</option>
+          </select>
+          <select id="match-teamB-input" required class="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-fire outline-none">
+            <option value="">Equipo B</option>
+          </select>
+          <select id="match-round-input" class="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-fire outline-none">
+            <option value="Grupos">Fase de Grupos</option>
+            <option value="Cuartos">Cuartos de Final</option>
+            <option value="Semifinal">Semifinales</option>
+            <option value="Final">Gran Final</option>
+          </select>
+          <select id="match-format-input" class="bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-fire outline-none">
+            <option value="Bo1">Bo1</option>
+            <option value="Bo3">Bo3</option>
+          </select>
+          <button type="submit" class="font-display uppercase tracking-wider text-sm font-bold py-3 rounded-lg bg-fire hover:bg-firelight transition">
+            <i class="fa-solid fa-plus mr-1"></i> Crear
+          </button>
+          <p id="match-form-error" class="sm:col-span-5 text-xs text-fire hidden"></p>
+        </form>
+
+        <div id="admin-matches-list" class="space-y-4">
+          <!-- Renderizado por JS -->
+        </div>
+      </div>
+
+      <!-- C) Backup System -->
+      <div class="glass rounded-2xl p-6 sm:p-8">
+        <h3 class="font-display font-bold text-xl text-white mb-6 flex items-center gap-3">
+          <i class="fa-solid fa-database text-spectral"></i> Copia de Seguridad
+        </h3>
+        <div class="flex flex-wrap gap-4">
+          <button id="btn-export" class="inline-flex items-center gap-2 font-display uppercase tracking-wider text-sm font-bold px-6 py-3 rounded-lg border border-spectral/50 text-spectral hover:bg-spectral hover:text-carbon transition">
+            <i class="fa-solid fa-file-export"></i> Exportar Datos (.json)
+          </button>
+          <label class="inline-flex items-center gap-2 font-display uppercase tracking-wider text-sm font-bold px-6 py-3 rounded-lg border border-radiant/50 text-radiant hover:bg-radiant hover:text-carbon transition cursor-pointer">
+            <i class="fa-solid fa-file-import"></i> Importar Datos (.json)
+            <input type="file" id="input-import" accept="application/json,.json" class="hidden">
+          </label>
+          <button id="btn-reset" class="inline-flex items-center gap-2 font-display uppercase tracking-wider text-sm font-bold px-6 py-3 rounded-lg border border-fire/50 text-fire hover:bg-fire hover:text-white transition">
+            <i class="fa-solid fa-rotate-left"></i> Restablecer Torneo
+          </button>
+        </div>
+        <p id="backup-status" class="text-xs text-gray-500 mt-4"></p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="bg-[#0A0C0E] border-t border-white/5 pt-16 pb-8">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-10 mb-12">
+      <div>
+        <div class="flex items-center gap-2 mb-4">
+          <img src="assets/images/logo-aegis.png" alt="Aegis League" class="h-8 w-8 object-contain">
+          <span class="font-display font-bold tracking-widest text-white text-sm">AEGIS<span class="text-fire">LEAGUE</span></span>
+        </div>
+        <p class="text-gray-500 text-sm leading-relaxed">Torneo competitivo de Dota 2 organizado por estudiantes de Ingeniería de Sistemas.</p>
+      </div>
+
+      <div>
+        <h4 class="font-display text-white text-sm uppercase tracking-wider mb-4">Navegación</h4>
+        <ul class="space-y-2 text-sm text-gray-500">
+          <li><a href="#equipos" class="hover:text-radiant transition">Equipos</a></li>
+          <li><a href="#brackets" class="hover:text-radiant transition">Brackets</a></li>
+          <li><a href="#reglas" class="hover:text-radiant transition">Reglas</a></li>
+          <li><a href="#admin" class="hover:text-radiant transition">Panel Admin</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="font-display text-white text-sm uppercase tracking-wider mb-4">Contáctanos</h4>
+        <div class="flex items-center gap-4 text-xl mb-4">
+          <a href="https://api.whatsapp.com/send/?phone=51963110751&text=Hola%2C+quiero+consultar+sobre+Aegis+League&type=phone_number&app_absent=0" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" class="text-gray-500 hover:text-green-400 transition"><i class="fa-brands fa-whatsapp"></i></a>
+          <a href="https://tiktok.com/@aegis_league" target="_blank" rel="noopener noreferrer" aria-label="TikTok" class="text-gray-500 hover:text-white transition"><i class="fa-brands fa-tiktok"></i></a>
+          <a href="mailto:contacto.aegis.league@gmail.com" aria-label="Correo" class="text-gray-500 hover:text-radiant transition"><i class="fa-solid fa-envelope"></i></a>
+          <a href="https://www.facebook.com/profile.php?id=61593384214710" target="_blank" rel="noopener noreferrer" aria-label="Facebook Oficial" class="text-gray-500 hover:text-spectral transition"><i class="fa-brands fa-facebook"></i></a>
+          <a href="https://www.facebook.com/profile.php?id=61593378905004" target="_blank" rel="noopener noreferrer" aria-label="Facebook Comunidad" class="text-gray-500 hover:text-spectral transition"><i class="fa-brands fa-facebook-messenger"></i></a>
+        </div>
+        <p class="text-gray-500 text-sm">contacto.aegis.league@gmail.com</p>
+      </div>
+    </div>
+
+    <div class="border-t border-white/5 pt-6 text-center">
+      <p class="text-gray-600 text-xs">&copy; <span id="footer-year"></span> Aegis League. Todos los derechos reservados.</p>
+      <p class="text-gray-700 text-xs mt-1">Desarrollado por estudiantes de Ingeniería de Sistemas.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ================= BOTÓN FLOTANTE DE WHATSAPP ================= -->
+<a href="https://api.whatsapp.com/send/?phone=51963110751&text=Hola%2C+quiero+consultar+sobre+Aegis+League&type=phone_number&app_absent=0"
+   target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp"
+   class="whatsapp-float fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-[#25D366] text-white
+          flex items-center justify-center text-2xl shadow-lg shadow-black/40
+          hover:scale-110 hover:brightness-105 active:scale-95 transition-transform">
+  <i class="fa-brands fa-whatsapp"></i>
+</a>
+
+<script src="js/main.js" defer></script>
+</body>
+</html>

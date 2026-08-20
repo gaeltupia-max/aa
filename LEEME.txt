@@ -1,0 +1,22 @@
+AEGIS LEAGUE - Sitio web del torneo
+=====================================
+
+Estructura:
+  index.html          -> Página principal
+  js/main.js           -> Lógica del CMS (equipos, brackets, backups)
+  assets/images/        -> Coloca aquí: logo-aegis.png, hero-bg.jpg, dota-bg.jpg
+  assets/images/teams/  -> Coloca aquí los logos: team1.png ... team20.png
+  assets/sounds/         -> Coloca aquí: match-found.mp3
+
+Si no colocas las imágenes, el sitio funciona igual: los logos de equipo
+se reemplazan automáticamente por un ícono con las iniciales del equipo.
+
+Panel de Administración:
+  Sección "Panel Admin" (al final de la página o desde el menú).
+  Clave de acceso de demostración: aegis2026
+  (Cámbiala en js/main.js, constante ADMIN_PASSWORD, línea ~10)
+
+Datos:
+  Todo se guarda en localStorage del navegador bajo la clave
+  "aegis_league_data". Usa los botones de Exportar / Importar / Restablecer
+  dentro del Panel Admin para gestionar copias de seguridad en JSON.
