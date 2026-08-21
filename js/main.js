@@ -1,17 +1,25 @@
 /* =========================================================
    AEGIS LEAGUE — main.js
-   CMS en tiempo real con persistencia en localStorage.
+   CMS en tiempo real con persistencia en Firebase Firestore.
    ========================================================= */
+
+import { db, auth, ADMIN_EMAIL } from "./firebase-init.js";
+import {
+  doc, getDoc, setDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "aegis_league_data";
-  const ADMIN_AUTH_KEY = "aegis_admin_auth";
-  const ADMIN_PASSWORD = "aegis2026";
+  // Documento único donde vive todo el estado del torneo
+  const TOURNAMENT_DOC = doc(db, "torneo", "aegis-league");
 
   /* ---------------------------------------------------------
      1. MOCK DATA — 20 equipos ficticios + partidas de ejemplo
+     (se usa solo la PRIMERA vez, si el documento no existe aún)
   --------------------------------------------------------- */
   const TEAM_NAMES = [
     "Team Radiant", "Dire Wolves", "Ancient Guardians", "Phantom Reapers",
@@ -35,7 +43,6 @@
     let mCounter = 1;
     const nextId = () => `m${mCounter++}`;
 
-    // Fase de Grupos: 2 partidas de ejemplo por grupo (Bo1)
     groups.forEach((g) => {
       const groupTeams = teams.filter((t) => t.group === g);
       matches.push({
@@ -48,7 +55,6 @@
       });
     });
 
-    // Aplicar resultados de ejemplo: ganadores de grupo -> Clasificado, perdedores -> Eliminado
     matches.filter(m => m.winner_id).forEach(m => {
       const loserId = m.winner_id === m.teamA_id ? m.teamB_id : m.teamA_id;
       const winner = teams.find(t => t.id === m.winner_id);
@@ -57,7 +63,6 @@
       if (loser) loser.status = "eliminado";
     });
 
-    // Cuartos de Final (Bo1) — 4 llaves, 2 resueltas de ejemplo
     matches.push({ id: nextId(), round: "Cuartos", teamA_id: 1, teamB_id: 6, scoreA: 1, scoreB: 0, format: "Bo1", winner_id: 1 });
     matches.push({ id: nextId(), round: "Cuartos", teamA_id: 11, teamB_id: 16, scoreA: 0, scoreB: 1, format: "Bo1", winner_id: 16 });
     matches.push({ id: nextId(), round: "Cuartos", teamA_id: null, teamB_id: null, scoreA: 0, scoreB: 0, format: "Bo1", winner_id: null });
@@ -68,45 +73,54 @@
     teams.find(t => t.id === 16).status = "clasificado";
     teams.find(t => t.id === 11).status = "eliminado";
 
-    // Semifinales (Bo3) — pendientes
     matches.push({ id: nextId(), round: "Semifinal", teamA_id: null, teamB_id: null, scoreA: 0, scoreB: 0, format: "Bo3", winner_id: null });
     matches.push({ id: nextId(), round: "Semifinal", teamA_id: null, teamB_id: null, scoreA: 0, scoreB: 0, format: "Bo3", winner_id: null });
-
-    // Gran Final (Bo3) — pendiente
     matches.push({ id: nextId(), round: "Final", teamA_id: null, teamB_id: null, scoreA: 0, scoreB: 0, format: "Bo3", winner_id: null });
 
     return { teams, matches };
   }
 
   /* ---------------------------------------------------------
-     2. ESTADO GLOBAL — carga / guardado en localStorage
+     2. ESTADO GLOBAL — carga / guardado en FIRESTORE
+     (esto reemplaza el localStorage de la versión anterior)
   --------------------------------------------------------- */
   let state = null;
+  let suppressNextSnapshotRender = false;
 
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.teams) && Array.isArray(parsed.matches)) {
-          state = parsed;
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn("No se pudo leer aegis_league_data, se regenerarán datos por defecto.", e);
+  // Carga inicial + escucha de cambios en tiempo real desde CUALQUIER dispositivo
+  async function initState() {
+    const snap = await getDoc(TOURNAMENT_DOC);
+    if (snap.exists()) {
+      state = snap.data();
+    } else {
+      state = buildMockData();
+      await setDoc(TOURNAMENT_DOC, state);
     }
-    state = buildMockData();
-    saveState();
+    renderAll();
+
+    // Cada vez que CUALQUIER admin (en cualquier computadora) guarda un cambio,
+    // Firestore avisa a todos los navegadores abiertos y se vuelve a pintar la página.
+    onSnapshot(TOURNAMENT_DOC, (docSnap) => {
+      if (!docSnap.exists()) return;
+      state = docSnap.data();
+      renderAll();
+    });
   }
 
-  function saveState() {
+  async function saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      await setDoc(TOURNAMENT_DOC, state);
     } catch (e) {
-      console.error("Error al guardar en localStorage:", e);
-      alert("No se pudo guardar el cambio: el almacenamiento del navegador está lleno. Intenta usar logos más livianos o elimina alguna copia de seguridad antigua.");
+      console.error("Error al guardar en Firestore:", e);
+      alert("No se pudo guardar el cambio. Revisa tu conexión a internet o que hayas iniciado sesión como admin.");
     }
+  }
+
+  // Guardado con espera breve (para los marcadores, mientras el admin escribe números)
+  let saveScoreTimeout = null;
+  function saveStateDebounced() {
+    clearTimeout(saveScoreTimeout);
+    saveScoreTimeout = setTimeout(saveState, 500);
   }
 
   function getTeamById(id) {
@@ -172,9 +186,6 @@
       </div>`;
   }
 
-  // Al insertar HTML con <img onerror>, forzamos verificación manual porque
-  // algunos navegadores no disparan onerror en rutas locales inexistentes de forma consistente
-  // cuando la imagen nunca fue solicitada (protocolo file://) — se maneja igualmente vía onerror.
   document.addEventListener(
     "error",
     function (e) {
@@ -291,7 +302,7 @@
   }
 
   /* ---------------------------------------------------------
-     8. ADMIN: LOGIN GATE
+     8. ADMIN: LOGIN GATE (ahora con Firebase Authentication)
   --------------------------------------------------------- */
   function initAdminGate() {
     const gate = document.getElementById("admin-login-gate");
@@ -310,27 +321,37 @@
       populateMatchTeamSelects();
     }
 
-    if (sessionStorage.getItem(ADMIN_AUTH_KEY) === "true") {
-      showPanel();
+    function showGate() {
+      panel.classList.add("hidden");
+      gate.classList.remove("hidden");
     }
+
+    // Firebase avisa automáticamente si ya hay una sesión activa (persiste entre visitas)
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        showPanel();
+      } else {
+        showGate();
+      }
+    });
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      if (passwordInput.value === ADMIN_PASSWORD) {
-        sessionStorage.setItem(ADMIN_AUTH_KEY, "true");
-        errorMsg.classList.add("hidden");
-        passwordInput.value = "";
-        showPanel();
-      } else {
-        errorMsg.classList.remove("hidden");
-      }
+      errorMsg.classList.add("hidden");
+      signInWithEmailAndPassword(auth, ADMIN_EMAIL, passwordInput.value)
+        .then(() => {
+          passwordInput.value = "";
+        })
+        .catch((err) => {
+          console.error(err);
+          errorMsg.textContent = "Clave incorrecta o error de conexión. Intenta nuevamente.";
+          errorMsg.classList.remove("hidden");
+        });
     });
 
     if (logoutBtn) {
       logoutBtn.addEventListener("click", () => {
-        sessionStorage.removeItem(ADMIN_AUTH_KEY);
-        panel.classList.add("hidden");
-        gate.classList.remove("hidden");
+        signOut(auth);
       });
     }
   }
@@ -390,7 +411,7 @@
     const errorEl = document.getElementById("team-form-error");
     if (!form) return;
 
-    const MAX_LOGO_BYTES = 500 * 1024; // 500KB por imagen para no saturar localStorage
+    const MAX_LOGO_BYTES = 500 * 1024;
 
     function showError(msg) {
       errorEl.textContent = msg;
@@ -419,7 +440,6 @@
       clearError();
     }
 
-    // Cargar el archivo seleccionado como imagen embebida (Base64)
     logoFileInput.addEventListener("change", () => {
       const file = logoFileInput.files && logoFileInput.files[0];
       if (!file) return;
@@ -431,7 +451,7 @@
         return;
       }
       if (file.size > MAX_LOGO_BYTES) {
-        showError("La imagen es muy pesada (máx. 1.5MB). Elige una más liviana.");
+        showError("La imagen es muy pesada (máx. 500KB). Elige una más liviana — Firestore también tiene límite de tamaño por documento.");
         logoFileInput.value = "";
         return;
       }
@@ -517,7 +537,6 @@
       if (action === "delete-team") {
         if (confirm(`¿Eliminar definitivamente a "${team.name}"? Esta acción no se puede deshacer.`)) {
           state.teams = state.teams.filter((t) => t.id !== id);
-          // Limpiar referencias en partidas
           state.matches.forEach((m) => {
             if (m.teamA_id === id) m.teamA_id = null;
             if (m.teamB_id === id) m.teamB_id = null;
@@ -559,7 +578,6 @@
     const errorEl = document.getElementById("match-form-error");
     if (!form) return;
 
-    // Formato sugerido según ronda
     roundInput.addEventListener("change", () => {
       formatInput.value = roundInput.value === "Semifinal" || roundInput.value === "Final" ? "Bo3" : "Bo1";
     });
@@ -658,7 +676,7 @@
       if (!match) return;
       const value = Math.max(0, parseInt(input.value, 10) || 0);
       match[input.dataset.field] = value;
-      saveState();
+      saveStateDebounced(); // espera a que dejes de escribir para guardar
       renderBrackets();
     });
 
@@ -782,6 +800,7 @@
      12. RENDER GENERAL
   --------------------------------------------------------- */
   function renderAll() {
+    if (!state) return;
     renderTeamsGrid();
     renderBrackets();
     renderAdminTeamsTable();
@@ -902,8 +921,7 @@
   /* ---------------------------------------------------------
      INIT
   --------------------------------------------------------- */
-  document.addEventListener("DOMContentLoaded", () => {
-    loadState();
+  document.addEventListener("DOMContentLoaded", async () => {
     initHeaderLogo();
     initMatchFoundOverlay();
     initHeaderBehavior();
@@ -915,6 +933,7 @@
     initMatchForm();
     initMatchesListEvents();
     initBackupSystem();
-    renderAll();
+
+    await initState(); // carga desde Firestore y activa la sincronización en tiempo real
   });
 })();
